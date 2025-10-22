@@ -1,3 +1,0 @@
-PLACEHOLDER: Replace this with a 128x128 PNG icon for the mod.
-The icon should represent the CTL TierList branding.
-You can create the icon using any image editor and replace this file with icon.png
