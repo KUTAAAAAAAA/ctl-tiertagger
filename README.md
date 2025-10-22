@@ -17,7 +17,7 @@ A Minecraft Fabric mod that displays player PvP tiers from [Central TierList](ht
 
 ## Requirements
 
-- Minecraft 1.21, 1.21.1, 1.21.2, 1.21.3, 1.21.4+ (All 1.21.x versions)
+- Minecraft 1.21.1 through 1.21.10 (All supported 1.21.x versions)
 - Fabric Loader 0.16.0+
 - Fabric API
 - Java 21+

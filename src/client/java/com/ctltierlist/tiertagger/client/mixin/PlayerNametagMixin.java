@@ -32,6 +32,7 @@ public abstract class PlayerNametagMixin {
         // Determine which tier to show based on config
         String displayTier;
         String displayGamemode;
+        boolean isRetired;
         
         if (ModConfig.shouldShowHighestTier()) {
             // Show highest tier across all gamemodes
@@ -41,6 +42,8 @@ public abstract class PlayerNametagMixin {
             if (displayTier.equals("Unranked") || displayGamemode == null) {
                 return original;
             }
+            
+            isRetired = tierData.isRetired(displayGamemode);
         } else {
             // Filter by selected gamemode
             String selectedGamemode = ModConfig.getSelectedGamemode();
@@ -51,6 +54,12 @@ public abstract class PlayerNametagMixin {
             
             displayTier = tierData.getTierForGamemode(selectedGamemode);
             displayGamemode = selectedGamemode;
+            isRetired = tierData.isRetired(selectedGamemode);
+        }
+        
+        // Add R prefix for retired tiers (e.g., "RHT3")
+        if (isRetired) {
+            displayTier = "R" + displayTier;
         }
         
         // Build tier text in TierTagger format: [ICON] TIER | PlayerName

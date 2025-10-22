@@ -22,7 +22,7 @@ public class ModConfig {
     private static String selectedGamemode = "Sword";
     private static boolean showHighestTier = false;
     
-    // Tier colors (TierTagger default colors)
+    // Tier colors (Exact TierTagger colors)
     private static int colorHT1 = 0xe8ba3a;
     private static int colorLT1 = 0xd5b355;
     private static int colorHT2 = 0xc4d3e7;
@@ -269,6 +269,11 @@ public class ModConfig {
     
     // Helper method to get tier color by name
     public static int getTierColor(String tier) {
+        // Handle retired tiers (e.g., "RHT3" -> use retired color)
+        if (tier.startsWith("R")) {
+            return 0x808080; // TierTagger retired color (gray)
+        }
+        
         if (tier.startsWith("HT1")) return colorHT1;
         else if (tier.startsWith("LT1")) return colorLT1;
         else if (tier.startsWith("HT2")) return colorHT2;

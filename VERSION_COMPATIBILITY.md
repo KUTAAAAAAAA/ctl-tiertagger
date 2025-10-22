@@ -2,20 +2,25 @@
 
 ## Supported Minecraft Versions
 
-This mod is built to support **all Minecraft 1.21.x versions**:
+This mod is built to support **Minecraft 1.21 through 1.21.10**:
 - ✅ Minecraft 1.21
 - ✅ Minecraft 1.21.1
 - ✅ Minecraft 1.21.2
 - ✅ Minecraft 1.21.3
 - ✅ Minecraft 1.21.4
-- ✅ Future 1.21.x releases
+- ✅ Minecraft 1.21.5
+- ✅ Minecraft 1.21.6
+- ✅ Minecraft 1.21.7
+- ✅ Minecraft 1.21.8
+- ✅ Minecraft 1.21.9
+- ✅ Minecraft 1.21.10
 
 ## How Version Compatibility Works
 
-The mod uses the `~1.21` version constraint in `fabric.mod.json`, which means:
-- The `~` (tilde) operator matches any version in the 1.21.x series
-- It will work with any Minecraft version from 1.21.0 onwards within the 1.21 series
-- It will NOT work with 1.20.x or 1.22.x (if/when released)
+The mod uses the `>=1.21.1 <=1.21.10` version constraint in `fabric.mod.json`, which means:
+- The mod will work with any Minecraft version from 1.21.1 to 1.21.10 (inclusive)
+- It will NOT work with 1.21.0, 1.20.x, 1.21.11+, or 1.22.x (if/when released)
+- This provides explicit version range control for maximum compatibility
 
 ## Technical Details
 
@@ -26,9 +31,10 @@ The mod uses the `~1.21` version constraint in `fabric.mod.json`, which means:
 - **Fabric API**: 0.102.0+1.21.1 (or any 1.21.x compatible version)
 
 ### Version String Format
-The mod declares: `"minecraft": "~1.21"`
+The mod declares: `"minecraft": ">=1.21.1 <=1.21.10"`
 
 This uses Fabric's version range syntax:
+- `>=1.21.1 <=1.21.10` = 1.21.1 through 1.21.10 (inclusive range)
 - `~1.21` = 1.21.x (any patch version)
 - `>=1.21` = 1.21 and above (including 1.22+)
 - `1.21.1` = exactly 1.21.1

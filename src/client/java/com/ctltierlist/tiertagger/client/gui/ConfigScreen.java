@@ -13,6 +13,9 @@ public class ConfigScreen extends Screen {
     private int centerX;
     private int spacing = 25;
     private ConfigCategory currentCategory = ConfigCategory.GENERAL;
+    private int scrollOffset = 0;
+    private int maxScroll = 0;
+    private int contentHeight = 0;
     
     private enum ConfigCategory {
         GENERAL("General"),
@@ -33,6 +36,7 @@ public class ConfigScreen extends Screen {
     @Override
     protected void init() {
         centerX = this.width / 2;
+        scrollOffset = 0;
         
         // Category tabs at the top
         int tabY = 45;
@@ -130,6 +134,18 @@ public class ConfigScreen extends Screen {
          .tooltip(Tooltip.of(Text.literal("Enable debug logging")))
          .build());
         
+        // Player search button
+        this.addDrawableChild(ButtonWidget.builder(
+            Text.literal("§bSearch Player"),
+            button -> {
+                if (this.client != null) {
+                    this.client.setScreen(new PlayerSearchScreen(this));
+                }
+            }
+        ).dimensions(centerX - 100, startY + spacing * 5, 200, 20)
+         .tooltip(Tooltip.of(Text.literal("Search for a player's tier information")))
+         .build());
+        
         // Reset to defaults button
         this.addDrawableChild(ButtonWidget.builder(
             Text.literal("§cReset All Settings"),
@@ -143,71 +159,70 @@ public class ConfigScreen extends Screen {
     }
     
     private void initColoursCategory() {
-        int startY = 70;
-        int rowHeight = 28;
+        int startY = 75;
+        int rowHeight = 26;
         int row = 0;
         
-        // Title
-        this.addDrawable((context, mouseX, mouseY, delta) -> {
-            context.drawCenteredTextWithShadow(this.textRenderer, Text.literal("§6Tier Color Customization"), centerX, 48, Colors.WHITE);
-        });
+        int availableHeight = this.height - 120; // Space between tabs and buttons
+        int totalContentHeight = rowHeight * 10; // 10 tier rows
+        maxScroll = Math.max(0, totalContentHeight - availableHeight);
         
         // HT1
-        addTierColorRow("HT1", centerX - 180, startY + rowHeight * row++, 
+        addTierColorRow("HT1", centerX - 180, startY + rowHeight * row++ - scrollOffset, 
             ModConfig.getColorHT1(), ModConfig::setColorHT1,
             ModConfig.getGradientColorHT1(), ModConfig::setGradientColorHT1,
             ModConfig.isGradientEnabledHT1(), ModConfig::setGradientEnabledHT1);
         
         // LT1
-        addTierColorRow("LT1", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("LT1", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorLT1(), ModConfig::setColorLT1,
             ModConfig.getGradientColorLT1(), ModConfig::setGradientColorLT1,
             ModConfig.isGradientEnabledLT1(), ModConfig::setGradientEnabledLT1);
         
         // HT2
-        addTierColorRow("HT2", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("HT2", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorHT2(), ModConfig::setColorHT2,
             ModConfig.getGradientColorHT2(), ModConfig::setGradientColorHT2,
             ModConfig.isGradientEnabledHT2(), ModConfig::setGradientEnabledHT2);
         
         // LT2
-        addTierColorRow("LT2", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("LT2", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorLT2(), ModConfig::setColorLT2,
             ModConfig.getGradientColorLT2(), ModConfig::setGradientColorLT2,
             ModConfig.isGradientEnabledLT2(), ModConfig::setGradientEnabledLT2);
         
         // HT3
-        addTierColorRow("HT3", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("HT3", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorHT3(), ModConfig::setColorHT3,
             ModConfig.getGradientColorHT3(), ModConfig::setGradientColorHT3,
             ModConfig.isGradientEnabledHT3(), ModConfig::setGradientEnabledHT3);
         
         // LT3
-        addTierColorRow("LT3", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("LT3", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorLT3(), ModConfig::setColorLT3,
             ModConfig.getGradientColorLT3(), ModConfig::setGradientColorLT3,
             ModConfig.isGradientEnabledLT3(), ModConfig::setGradientEnabledLT3);
         
         // HT4
-        addTierColorRow("HT4", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("HT4", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorHT4(), ModConfig::setColorHT4,
             ModConfig.getGradientColorHT4(), ModConfig::setGradientColorHT4,
             ModConfig.isGradientEnabledHT4(), ModConfig::setGradientEnabledHT4);
         
         // LT4
-        addTierColorRow("LT4", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("LT4", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorLT4(), ModConfig::setColorLT4,
             ModConfig.getGradientColorLT4(), ModConfig::setGradientColorLT4,
             ModConfig.isGradientEnabledLT4(), ModConfig::setGradientEnabledLT4);
         
         // HT5
-        addTierColorRow("HT5", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("HT5", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorHT5(), ModConfig::setColorHT5,
             ModConfig.getGradientColorHT5(), ModConfig::setGradientColorHT5,
             ModConfig.isGradientEnabledHT5(), ModConfig::setGradientEnabledHT5);
         
         // LT5
-        addTierColorRow("LT5", centerX - 180, startY + rowHeight * row++,
+        addTierColorRow("LT5", centerX - 180, startY + rowHeight * row++ - scrollOffset,
             ModConfig.getColorLT5(), ModConfig::setColorLT5,
             ModConfig.getGradientColorLT5(), ModConfig::setGradientColorLT5,
             ModConfig.isGradientEnabledLT5(), ModConfig::setGradientEnabledLT5);
@@ -228,6 +243,13 @@ public class ConfigScreen extends Screen {
                                   int primaryColor, java.util.function.Consumer<Integer> onPrimaryChange,
                                   int gradientColor, java.util.function.Consumer<Integer> onGradientChange,
                                   boolean gradientEnabled, java.util.function.Consumer<Boolean> onGradientToggle) {
+        // Check if this row is visible in the viewport
+        int topBound = 70;
+        int bottomBound = this.height - 60;
+        boolean isVisible = y >= topBound && y + 25 <= bottomBound;
+        
+        if (!isVisible) return; // Skip rendering if out of viewport
+        
         // Tier label
         this.addDrawable((context, mouseX, mouseY, delta) -> {
             context.drawText(this.textRenderer, Text.literal(tierName), x, y + 5, Colors.WHITE, false);
@@ -313,7 +335,40 @@ public class ConfigScreen extends Screen {
                 this.height - 80,
                 0xAAAAAA
             );
+            
+            // Draw scroll indicators
+            if (maxScroll > 0) {
+                if (scrollOffset > 0) {
+                    context.drawCenteredTextWithShadow(
+                        this.textRenderer,
+                        Text.literal("§7▲ Scroll Up"),
+                        centerX,
+                        68,
+                        0xFFFFFF
+                    );
+                }
+                if (scrollOffset < maxScroll) {
+                    context.drawCenteredTextWithShadow(
+                        this.textRenderer,
+                        Text.literal("§7▼ Scroll Down"),
+                        centerX,
+                        this.height - 95,
+                        0xFFFFFF
+                    );
+                }
+            }
         }
+    }
+    
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (this.currentCategory == ConfigCategory.COLOURS && maxScroll > 0) {
+            int scrollAmount = (int) (verticalAmount * 20);
+            scrollOffset = Math.max(0, Math.min(maxScroll, scrollOffset - scrollAmount));
+            this.clearAndInit();
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount);
     }
 
     @Override

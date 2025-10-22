@@ -48,6 +48,7 @@ public class TierHudRenderer {
         // Determine which tier to show based on config
         String displayTier;
         String displayGamemode;
+        boolean isRetired;
         
         if (ModConfig.shouldShowHighestTier()) {
             // Show highest tier across all gamemodes
@@ -59,7 +60,8 @@ public class TierHudRenderer {
                 return;
             }
             
-            CTLTierTagger.LOGGER.info("[DEBUG] Showing highest tier: tier={}, gamemode={}, region={}", displayTier, displayGamemode, tierData.region);
+            isRetired = tierData.isRetired(displayGamemode);
+            CTLTierTagger.LOGGER.info("[DEBUG] Showing highest tier: tier={}, gamemode={}, region={}, retired={}", displayTier, displayGamemode, tierData.region, isRetired);
         } else {
             // Filter by selected gamemode
             String selectedGamemode = ModConfig.getSelectedGamemode();
@@ -71,8 +73,14 @@ public class TierHudRenderer {
             
             displayTier = tierData.getTierForGamemode(selectedGamemode);
             displayGamemode = selectedGamemode;
+            isRetired = tierData.isRetired(selectedGamemode);
             
-            CTLTierTagger.LOGGER.info("[DEBUG] Showing selected gamemode tier: tier={}, gamemode={}, region={}", displayTier, displayGamemode, tierData.region);
+            CTLTierTagger.LOGGER.info("[DEBUG] Showing selected gamemode tier: tier={}, gamemode={}, region={}, retired={}", displayTier, displayGamemode, tierData.region, isRetired);
+        }
+        
+        // Add R prefix for retired tiers (e.g., "RHT3")
+        if (isRetired) {
+            displayTier = "R" + displayTier;
         }
         
         // Build tier text in TierTagger format: [ICON] TIER
