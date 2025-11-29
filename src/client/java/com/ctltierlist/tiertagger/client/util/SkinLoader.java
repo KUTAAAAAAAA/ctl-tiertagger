@@ -108,14 +108,20 @@ public class SkinLoader {
                         profile = onlinePlayer.get().getProfile();
                         CTLTierTagger.LOGGER.info("Found online player profile for {}: {}", playerName, profile.getId());
                     } else {
-                        // Create profile with name - Minecraft will resolve the skin
-                        profile = new com.mojang.authlib.GameProfile(null, playerName);
-                        CTLTierTagger.LOGGER.info("Created offline profile for {}", playerName);
+                        // Create profile with pseudo UUID - Minecraft will resolve the skin by name
+                        java.util.UUID pseudoUuid = java.util.UUID.nameUUIDFromBytes(
+                            ("OfflinePlayer:" + playerName).getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                        );
+                        profile = new com.mojang.authlib.GameProfile(pseudoUuid, playerName);
+                        CTLTierTagger.LOGGER.info("Created offline profile for {} with pseudo UUID: {}", playerName, pseudoUuid);
                     }
                 } else {
-                    // Create profile with name - Minecraft will resolve the skin
-                    profile = new com.mojang.authlib.GameProfile(null, playerName);
-                    CTLTierTagger.LOGGER.info("Created offline profile for {}", playerName);
+                    // Create profile with pseudo UUID - Minecraft will resolve the skin by name
+                    java.util.UUID pseudoUuid = java.util.UUID.nameUUIDFromBytes(
+                        ("OfflinePlayer:" + playerName).getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                    );
+                    profile = new com.mojang.authlib.GameProfile(pseudoUuid, playerName);
+                    CTLTierTagger.LOGGER.info("Created offline profile for {} with pseudo UUID: {}", playerName, pseudoUuid);
                 }
                 
                 // Get skin textures from Minecraft's skin provider using correct 1.21.1 API
