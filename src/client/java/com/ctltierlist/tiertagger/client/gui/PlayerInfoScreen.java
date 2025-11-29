@@ -154,6 +154,9 @@ public class PlayerInfoScreen extends Screen {
             case "cpvp", "crystal", "vanilla" -> Text.empty()
                 .append(Text.literal("💎 ").styled(s -> s.withColor(0xFF55FF)))
                 .append(Text.literal("Crystal").styled(s -> s.withColor(0xFF55FF)));
+            case "diasmp" -> Text.empty()
+                .append(Text.literal("💎 ").styled(s -> s.withColor(0x55FFFF)))
+                .append(Text.literal("DiaSMP").styled(s -> s.withColor(0x55FFFF)));
             default -> Text.literal(gamemode).formatted(Formatting.WHITE);
         };
     }

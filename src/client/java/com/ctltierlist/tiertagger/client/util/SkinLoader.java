@@ -30,6 +30,45 @@ public class SkinLoader {
     
     private static final Map<String, Identifier> skinCache = new ConcurrentHashMap<>();
     private static final Map<String, Identifier> headCache = new ConcurrentHashMap<>();
+    private static final Map<String, java.util.UUID> uuidCache = new ConcurrentHashMap<>();
+    
+    /**
+     * Fetch real UUID from Mojang API
+     */
+    private static java.util.UUID fetchMojangUUID(String playerName) {
+        // Check cache first
+        if (uuidCache.containsKey(playerName.toLowerCase())) {
+            return uuidCache.get(playerName.toLowerCase());
+        }
+        
+        try {
+            String url = "https://api.mojang.com/users/profiles/minecraft/" + playerName;
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(5))
+                .GET()
+                .build();
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+            
+            if (response.statusCode() == 200) {
+                // Parse JSON: {"id":"uuid-without-dashes","name":"PlayerName"}
+                String json = response.body();
+                String id = json.split("\"id\":\"")[1].split("\"")[0];
+                // Insert dashes into UUID
+                String uuidStr = id.replaceFirst(
+                    "(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})",
+                    "$1-$2-$3-$4-$5"
+                );
+                java.util.UUID uuid = java.util.UUID.fromString(uuidStr);
+                uuidCache.put(playerName.toLowerCase(), uuid);
+                CTLTierTagger.LOGGER.info("Fetched Mojang UUID for {}: {}", playerName, uuid);
+                return uuid;
+            }
+        } catch (Exception e) {
+            CTLTierTagger.LOGGER.warn("Failed to fetch Mojang UUID for {}: {}", playerName, e.getMessage());
+        }
+        return null;
+    }
     
     /**
      * Load full skin texture for 3D rendering
@@ -108,20 +147,32 @@ public class SkinLoader {
                         profile = onlinePlayer.get().getProfile();
                         CTLTierTagger.LOGGER.info("Found online player profile for {}: {}", playerName, profile.getId());
                     } else {
-                        // Create profile with pseudo UUID - Minecraft will resolve the skin by name
+                        // Try Mojang API first for real UUID, fallback to pseudo UUID
+                        java.util.UUID realUuid = fetchMojangUUID(playerName);
+                        if (realUuid != null) {
+                            profile = new com.mojang.authlib.GameProfile(realUuid, playerName);
+                            CTLTierTagger.LOGGER.info("Using Mojang UUID for {}: {}", playerName, realUuid);
+                        } else {
+                            java.util.UUID pseudoUuid = java.util.UUID.nameUUIDFromBytes(
+                                ("OfflinePlayer:" + playerName).getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                            );
+                            profile = new com.mojang.authlib.GameProfile(pseudoUuid, playerName);
+                            CTLTierTagger.LOGGER.info("Using pseudo UUID for {}: {}", playerName, pseudoUuid);
+                        }
+                    }
+                } else {
+                    // Try Mojang API first for real UUID, fallback to pseudo UUID
+                    java.util.UUID realUuid = fetchMojangUUID(playerName);
+                    if (realUuid != null) {
+                        profile = new com.mojang.authlib.GameProfile(realUuid, playerName);
+                        CTLTierTagger.LOGGER.info("Using Mojang UUID for {}: {}", playerName, realUuid);
+                    } else {
                         java.util.UUID pseudoUuid = java.util.UUID.nameUUIDFromBytes(
                             ("OfflinePlayer:" + playerName).getBytes(java.nio.charset.StandardCharsets.UTF_8)
                         );
                         profile = new com.mojang.authlib.GameProfile(pseudoUuid, playerName);
-                        CTLTierTagger.LOGGER.info("Created offline profile for {} with pseudo UUID: {}", playerName, pseudoUuid);
+                        CTLTierTagger.LOGGER.info("Using pseudo UUID for {}: {}", playerName, pseudoUuid);
                     }
-                } else {
-                    // Create profile with pseudo UUID - Minecraft will resolve the skin by name
-                    java.util.UUID pseudoUuid = java.util.UUID.nameUUIDFromBytes(
-                        ("OfflinePlayer:" + playerName).getBytes(java.nio.charset.StandardCharsets.UTF_8)
-                    );
-                    profile = new com.mojang.authlib.GameProfile(pseudoUuid, playerName);
-                    CTLTierTagger.LOGGER.info("Created offline profile for {} with pseudo UUID: {}", playerName, pseudoUuid);
                 }
                 
                 // Get skin textures from Minecraft's skin provider using correct 1.21.1 API
