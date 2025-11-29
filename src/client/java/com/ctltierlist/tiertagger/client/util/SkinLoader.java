@@ -175,16 +175,16 @@ public class SkinLoader {
                     }
                 }
                 
-                // Get skin textures from Minecraft's skin provider using correct 1.21.1 API
+                // Fetch skin textures from Mojang (async) - this actually fetches, not just returns cached
                 final var finalProfile = profile;
-                var skinSupplier = client.getSkinProvider().getSkinTextures(finalProfile);
+                var skinTexturesFuture = client.getSkinProvider().fetchSkinTextures(finalProfile);
+                var skinTextures = skinTexturesFuture.join(); // Wait for fetch to complete
                 
                 // Create PlayerSkinWidget with correct size (60x144 like original TierTagger)
-                // Use getEntityModelLoader() for 1.21.1
                 PlayerSkinWidget widget = new PlayerSkinWidget(
-                    60, 144,  // width, height - same as original TierTagger!
+                    60, 144,
                     client.getEntityModelLoader(),
-                    () -> skinSupplier  // Wrap in supplier lambda for 1.21.1
+                    () -> skinTextures != null ? skinTextures : client.getSkinProvider().getSkinTextures(finalProfile)
                 );
                 
                 CTLTierTagger.LOGGER.info("Created PlayerSkinWidget for {} with profile: {}", playerName, finalProfile.getId());
