@@ -50,19 +50,22 @@ public class SkinLoader {
                 .build();
             HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
             
-            if (response.statusCode() == 200) {
-                // Parse JSON: {"id":"uuid-without-dashes","name":"PlayerName"}
+            if (response.statusCode() == 200 && !response.body().isEmpty()) {
+                // Parse JSON using Gson: {"id":"uuid-without-dashes","name":"PlayerName"}
                 String json = response.body();
-                String id = json.split("\"id\":\"")[1].split("\"")[0];
-                // Insert dashes into UUID
-                String uuidStr = id.replaceFirst(
-                    "(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})",
-                    "$1-$2-$3-$4-$5"
-                );
-                java.util.UUID uuid = java.util.UUID.fromString(uuidStr);
-                uuidCache.put(playerName.toLowerCase(), uuid);
-                CTLTierTagger.LOGGER.info("Fetched Mojang UUID for {}: {}", playerName, uuid);
-                return uuid;
+                com.google.gson.JsonObject jsonObj = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+                if (jsonObj.has("id")) {
+                    String id = jsonObj.get("id").getAsString();
+                    // Insert dashes into UUID
+                    String uuidStr = id.replaceFirst(
+                        "(\\w{8})(\\w{4})(\\w{4})(\\w{4})(\\w{12})",
+                        "$1-$2-$3-$4-$5"
+                    );
+                    java.util.UUID uuid = java.util.UUID.fromString(uuidStr);
+                    uuidCache.put(playerName.toLowerCase(), uuid);
+                    CTLTierTagger.LOGGER.info("Fetched Mojang UUID for {}: {}", playerName, uuid);
+                    return uuid;
+                }
             }
         } catch (Exception e) {
             CTLTierTagger.LOGGER.warn("Failed to fetch Mojang UUID for {}: {}", playerName, e.getMessage());
@@ -129,65 +132,62 @@ public class SkinLoader {
     
     /**
      * Load skin and create a PlayerSkinWidget with correct size (60x144)
-     * Uses Minecraft's native skin provider system like working TierTagger
+     * Downloads skin directly from mineskin.eu and creates SkinTextures manually
      */
     public static CompletableFuture<PlayerSkinWidget> loadSkinAndCreateWidget(String playerName, MinecraftClient client) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Create a proper GameProfile - first try to resolve the real UUID
-                com.mojang.authlib.GameProfile profile;
-                
-                // Try to get the profile from online players first for better accuracy
-                if (client.getNetworkHandler() != null) {
-                    var onlinePlayer = client.getNetworkHandler().getPlayerList().stream()
-                            .filter(entry -> entry.getProfile().getName().equalsIgnoreCase(playerName))
-                            .findFirst();
-                    
-                    if (onlinePlayer.isPresent()) {
-                        profile = onlinePlayer.get().getProfile();
-                        CTLTierTagger.LOGGER.info("Found online player profile for {}: {}", playerName, profile.getId());
-                    } else {
-                        // Try Mojang API first for real UUID, fallback to pseudo UUID
-                        java.util.UUID realUuid = fetchMojangUUID(playerName);
-                        if (realUuid != null) {
-                            profile = new com.mojang.authlib.GameProfile(realUuid, playerName);
-                            CTLTierTagger.LOGGER.info("Using Mojang UUID for {}: {}", playerName, realUuid);
-                        } else {
-                            java.util.UUID pseudoUuid = java.util.UUID.nameUUIDFromBytes(
-                                ("OfflinePlayer:" + playerName).getBytes(java.nio.charset.StandardCharsets.UTF_8)
-                            );
-                            profile = new com.mojang.authlib.GameProfile(pseudoUuid, playerName);
-                            CTLTierTagger.LOGGER.info("Using pseudo UUID for {}: {}", playerName, pseudoUuid);
-                        }
-                    }
-                } else {
-                    // Try Mojang API first for real UUID, fallback to pseudo UUID
-                    java.util.UUID realUuid = fetchMojangUUID(playerName);
-                    if (realUuid != null) {
-                        profile = new com.mojang.authlib.GameProfile(realUuid, playerName);
-                        CTLTierTagger.LOGGER.info("Using Mojang UUID for {}: {}", playerName, realUuid);
-                    } else {
-                        java.util.UUID pseudoUuid = java.util.UUID.nameUUIDFromBytes(
-                            ("OfflinePlayer:" + playerName).getBytes(java.nio.charset.StandardCharsets.UTF_8)
-                        );
-                        profile = new com.mojang.authlib.GameProfile(pseudoUuid, playerName);
-                        CTLTierTagger.LOGGER.info("Using pseudo UUID for {}: {}", playerName, pseudoUuid);
-                    }
+                // 1. Download skin from mineskin.eu
+                String url = "https://mineskin.eu/skin/" + playerName;
+                HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET()
+                    .build();
+
+                HttpResponse<InputStream> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofInputStream());
+
+                if (response.statusCode() != 200) {
+                    CTLTierTagger.LOGGER.warn("Failed to download skin for {}: HTTP {}", playerName, response.statusCode());
+                    return null;
                 }
-                
-                // Fetch skin textures from Mojang (async) - this actually fetches, not just returns cached
-                final var finalProfile = profile;
-                var skinTexturesFuture = client.getSkinProvider().fetchSkinTextures(finalProfile);
-                var skinTextures = skinTexturesFuture.join(); // Wait for fetch to complete
-                
-                // Create PlayerSkinWidget with correct size (60x144 like original TierTagger)
+
+                // 2. Register texture
+                Identifier textureId = Identifier.of("ctl-tiertagger", "skins/" + playerName.toLowerCase());
+                try (InputStream inputStream = response.body()) {
+                    NativeImage image = NativeImage.read(inputStream);
+                    
+                    CompletableFuture<Void> registrationFuture = new CompletableFuture<>();
+                    client.execute(() -> {
+                        try {
+                            client.getTextureManager().registerTexture(textureId, new NativeImageBackedTexture(image));
+                            registrationFuture.complete(null);
+                        } catch (Exception e) {
+                            registrationFuture.completeExceptionally(e);
+                        }
+                    });
+                    registrationFuture.join();
+                }
+
+                // 3. Create SkinTextures manually
+                net.minecraft.client.util.SkinTextures skinTextures = new net.minecraft.client.util.SkinTextures(
+                    textureId,
+                    url,
+                    null,
+                    null,
+                    net.minecraft.client.util.SkinTextures.Model.WIDE,
+                    false
+                );
+
+                // 4. Create PlayerSkinWidget with supplier
+                final var finalSkinTextures = skinTextures;
                 PlayerSkinWidget widget = new PlayerSkinWidget(
                     60, 144,
                     client.getEntityModelLoader(),
-                    () -> skinTextures != null ? skinTextures : client.getSkinProvider().getSkinTextures(finalProfile)
+                    () -> finalSkinTextures
                 );
                 
-                CTLTierTagger.LOGGER.info("Created PlayerSkinWidget for {} with profile: {}", playerName, finalProfile.getId());
+                CTLTierTagger.LOGGER.info("Created PlayerSkinWidget for {} using mineskin.eu", playerName);
                 return widget;
             } catch (Exception e) {
                 CTLTierTagger.LOGGER.error("Error creating skin widget for {}: {}", playerName, e.getMessage());
